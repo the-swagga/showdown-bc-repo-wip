@@ -5,9 +5,9 @@ from poke_env.player import Player
 from poke_env import AccountConfiguration, ShowdownServerConfiguration
 
 load_dotenv()
-USERNAME = os.getenv("USERNAME")
+USER = os.getenv("USER")
 PASSWORD = os.getenv("PASSWORD")
-BATTLE_FORMAT = os.getenv("BATTLE_FORMAT")
+FORMAT = os.getenv("FORMAT")
 
 class TurnObserver(Player):
     def choose_move(self, battle):
@@ -16,9 +16,9 @@ class TurnObserver(Player):
 
 
 def init_observer_and_connect():
-    turn_observer = TurnObserver(account_configuration=AccountConfiguration(USERNAME, PASSWORD),
+    turn_observer = TurnObserver(account_configuration=AccountConfiguration(USER, PASSWORD),
                                  server_configuration=ShowdownServerConfiguration,
-                                 battle_format=BATTLE_FORMAT)
+                                 battle_format=FORMAT)
     return turn_observer
 
 async def queue_for_battle(turn_observer):
@@ -26,8 +26,16 @@ async def queue_for_battle(turn_observer):
 
 
 async def main():
-    print(USERNAME)
-    print(PASSWORD)
+    bot = init_observer_and_connect()
+
+    while True:
+        input(f"Press Enter to queue for {FORMAT}...")
+        print()
+        print(f"Queueing for {FORMAT}")
+        await queue_for_battle(bot)
+        print("Battle finished.")
+        print()
+
 
 if __name__ == "__main__":
     asyncio.run(main())
