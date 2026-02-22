@@ -1,2 +1,2 @@
 # **Dissertation Final Project**
-Behavior Cloning applied to Pokemon Showdown to demonstrate its effectiveness in video games
+Implicit Behavioural Cloning applied to Pokémon Showdown to create believable player clone AI agents
