@@ -1,8 +1,9 @@
 import asyncio
 import csv
 import os
-from poke_env.player import Player
 
+from poke_env.player import Player
+from poke_env.battle import Field, SideCondition, Weather
 
 FIELDNAMES = [
     "weather", "my_side_hazards", "opp_side_hazards", "terrain",
@@ -38,9 +39,6 @@ class TurnObserver(Player):
             my_team = battle.team
             opp_team = battle.opponent_team
 
-            print(battle.current_observation)
-            print()
-
             # --- Battle State --- #
             print(f"Weather: {battle.weather}")
             print(f"My side hazards: {battle.side_conditions}")
@@ -75,10 +73,29 @@ class TurnObserver(Player):
             opp = battle.opponent_active_pokemon
 
             self.prev_state = {
-                "weather": str(battle.weather),
-                "my_side_hazards": str(battle.side_conditions),
-                "opp_side_hazards": str(battle.opponent_side_conditions),
-                "terrain": str(battle.fields),
+                # --- Battle State Data --- #
+                "weather": get_weather(battle),
+                "weather_turns_left": weather_turns_left(battle),
+                "terrain": get_terrain(battle),
+                "terrain_turns_left": terrain_turns_left(battle),
+                "trick_room": get_trick_room(battle),
+                "trick_room_turns_left": trick_room_turns_left(battle),
+                "my_side_stealth_rock": get_my_side_stealth_rock(battle),
+                "opp_side_stealth_rock": get_opp_side_stealth_rock(battle),
+                "my_side_spikes": get_my_side_spikes(battle),
+                "opp_side_spikes": get_opp_side_spikes(battle),
+                "my_side_toxic_spikes": get_my_side_toxic_spikes(battle),
+                "opp_side_toxic_spikes": get_opp_side_toxic_spikes(battle),
+                "my_side_sticky_web": get_my_side_sticky_web(battle),
+                "opp_side_sticky_web": get_opp_side_sticky_web(battle),
+                "my_side_light_screen": get_my_side_screen(battle, "LIGHT_SCREEN"),
+                "opp_side_light_screen": get_opp_side_screen(battle, "LIGHT_SCREEN"),
+                "my_side_reflect": get_my_side_screen(battle, "REFLECT"),
+                "opp_side_reflect": get_opp_side_screen(battle, "REFLECT"),
+                "my_side_aurora_veil": get_my_side_screen(battle, "AURORA_VEIL"),
+                "opp_side_aurora_veil": get_opp_side_screen(battle, "AURORA_VEIL"),
+
+                # --- My Pokemon State Data --- #
                 "my_pokemon": my.species,
                 "my_tera_type": my.tera_type,
                 "my_is_tera": my.is_terastallized,
@@ -134,3 +151,167 @@ def get_action(battle, observation):
             return event[3]
 
     return None
+
+
+# --- Weather Processing --- #
+
+def get_weather(battle):
+    if not battle.weather:
+        return None
+
+    for weather in battle.weather:
+        return weather.name
+
+def weather_turns_left(battle):
+    if not battle.weather:
+        return 0
+
+    turns_left = 0
+    for weather, start_turn in battle.weather.items():
+        if weather == Weather.RAINDANCE or weather == Weather.SUNNYDAY:
+            weather_duration = 8
+        else:
+            weather_duration = 5
+
+        turns_left = weather_duration - (battle.turn - start_turn)
+        if turns_left < 1:
+            turns_left = 1
+
+    return turns_left
+
+
+# --- Terrain Processing --- #
+
+def get_terrain(battle):
+    if not battle.fields:
+        return False
+
+    for field in battle.fields:
+        if field.is_terrain:
+            return field
+
+    return None
+
+def terrain_turns_left(battle):
+    if not battle.fields:
+        return 0
+
+    turns_left = 0
+    for field, start_turn in battle.fields.items():
+        if field.is_terrain:
+            turns_left = 5 - (battle.turn - start_turn)
+            if turns_left < 1:
+                turns_left = 1
+            break
+
+    return turns_left
+
+# --- Trick Room Processing --- #
+
+def get_trick_room(battle):
+    if not battle.fields:
+        return False
+
+    for field in battle.fields:
+        if field == Field.TRICK_ROOM:
+            return True
+
+    return False
+
+def trick_room_turns_left(battle):
+    if not battle.fields:
+        return 0
+
+    turns_left = 0
+    for field, start_turn in battle.fields.items():
+        if field == Field.TRICK_ROOM:
+            turns_left = 5 - (battle.turn - start_turn)
+            if turns_left < 1:
+                turns_left = 1
+            break
+
+    return turns_left
+
+
+# --- Hazards Processing --- #
+
+def get_my_side_stealth_rock(battle):
+    return SideCondition.STEALTH_ROCK in battle.side_conditions
+
+def get_opp_side_stealth_rock(battle):
+    return SideCondition.STEALTH_ROCK in battle.opponent_side_conditions
+
+def get_my_side_spikes(battle):
+    return battle.side_conditions.get(SideCondition.SPIKES, 0)
+
+def get_opp_side_spikes(battle):
+    return battle.opponent_side_conditions.get(SideCondition.SPIKES, 0)
+
+def get_my_side_toxic_spikes(battle):
+    return battle.side_conditions.get(SideCondition.TOXIC_SPIKES, 0)
+
+def get_opp_side_toxic_spikes(battle):
+    return battle.opponent_side_conditions.get(SideCondition.TOXIC_SPIKES, 0)
+
+def get_my_side_sticky_web(battle):
+    return SideCondition.STICKY_WEB in battle.side_conditions
+
+def get_opp_side_sticky_web(battle):
+    return SideCondition.STICKY_WEB in battle.opponent_side_conditions
+
+
+# --- Screens Processing --- #
+
+def get_my_side_screen(battle, screen):
+    if screen == "LIGHT_SCREEN":
+        return SideCondition.LIGHT_SCREEN in battle.side_conditions
+    elif screen == "REFLECT":
+        return SideCondition.REFLECT in battle.side_conditions
+    elif screen == "AURORA_VEIL":
+        return SideCondition.AURORA_VEIL in battle.side_conditions
+
+def get_opp_side_screen(battle, screen):
+    if screen == "LIGHT_SCREEN":
+        return SideCondition.LIGHT_SCREEN in battle.opponent_side_conditions
+    elif screen == "REFLECT":
+        return SideCondition.REFLECT in battle.opponent_side_conditions
+    elif screen == "AURORA_VEIL":
+        return SideCondition.AURORA_VEIL in battle.opponent_side_conditions
+
+def get_my_side_screen_turns_left(battle, screen):
+    if not get_my_side_screen(battle, screen):
+        return 0
+
+    if screen == "LIGHT_SCREEN":
+        start_turn = battle.side_conditions[SideCondition.LIGHT_SCREEN]
+    elif screen == "REFLECT":
+        start_turn = battle.side_conditions[SideCondition.REFLECT]
+    elif screen == "AURORA_VEIL":
+        start_turn = battle.side_conditions[SideCondition.AURORA_VEIL]
+    else:
+        return 0
+
+    turns_left = 8 - (battle.turn - start_turn)
+    if turns_left < 1:
+        turns_left = 1
+
+    return turns_left
+
+def get_opp_side_screen_turns_left(battle, screen):
+    if not get_opp_side_screen(battle, screen):
+        return 0
+
+    if screen == "LIGHT_SCREEN":
+        start_turn = battle.opponent_side_conditions[SideCondition.LIGHT_SCREEN]
+    elif screen == "REFLECT":
+        start_turn = battle.opponent_side_conditions[SideCondition.REFLECT]
+    elif screen == "AURORA_VEIL":
+        start_turn = battle.opponent_side_conditions[SideCondition.AURORA_VEIL]
+    else:
+        return 0
+
+    turns_left = 8 - (battle.turn - start_turn)
+    if turns_left < 1:
+        turns_left = 1
+
+    return turns_left
