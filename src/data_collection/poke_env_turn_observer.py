@@ -6,14 +6,45 @@ from poke_env.player import Player
 from poke_env.battle import Field, SideCondition, Weather
 
 FIELDNAMES = [
-    "weather", "my_side_hazards", "opp_side_hazards", "terrain",
-    "my_pokemon", "my_tera_type", "my_is_tera", "my_type_1", "my_type_2",
-    "my_hp", "my_status", "my_boosts", "my_team",
-    "opp_pokemon", "opp_is_tera", "opp_type_1", "opp_type_2",
-    "opp_hp", "opp_status", "opp_boosts", "opp_team",
+    "weather",
+    "weather_turns_left",
+    "terrain",
+    "terrain_turns_left",
+    "trick_room",
+    "trick_room_turns_left",
+    "my_side_stealth_rock",
+    "opp_side_stealth_rock",
+    "my_side_spikes",
+    "opp_side_spikes",
+    "my_side_toxic_spikes",
+    "opp_side_toxic_spikes",
+    "my_side_sticky_web",
+    "opp_side_sticky_web",
+    "my_side_light_screen",
+    "opp_side_light_screen",
+    "my_side_reflect",
+    "opp_side_reflect",
+    "my_side_aurora_veil",
+    "opp_side_aurora_veil",
+    "my_pokemon",
+    "my_tera_type",
+    "my_is_tera",
+    "my_type_1",
+    "my_type_2",
+    "my_hp",
+    "my_status",
+    "my_boosts",
+    "my_team",
+    "opp_pokemon",
+    "opp_is_tera",
+    "opp_type_1",
+    "opp_type_2",
+    "opp_hp",
+    "opp_status",
+    "opp_boosts",
+    "opp_team",
     "action"
 ]
-
 
 class TurnObserver(Player):
     # Extends Poke-env Player Class
