@@ -66,7 +66,6 @@ class TurnObserver(Player):
             terrain_tl = terrain_turns_left(battle)
             if self.prev_state:
                 action, weather_setter, terrain_setter = get_action(battle, battle.observations.get(battle.turn - 1))
-                print(action)
                 if action:
                     if weather_setter:
                         weather_tl = 8
@@ -104,6 +103,8 @@ class TurnObserver(Player):
                 "opp_side_aurora_veil": get_opp_side_screen(battle, "AURORA_VEIL"),
 
                 # --- My Pokemon State Data --- #
+
+                # --- Misc Debug --- #
                 "my_pokemon": my.species,
                 "my_tera_type": my.tera_type,
                 "my_is_tera": my.is_terastallized,
@@ -166,7 +167,7 @@ def get_action(battle, observation):
     return None, False, False
 
 
-# --- Special Case Processing --- #
+# --- Special Case Processing (Poke-env does not see weather/terrain being active on the turn it is set on switch in) --- #
 
 WEATHER_SETTERS = {"kyogre", "pelipper", "politoed", "koraidon", "groudon", "torkoal", "ninetales", "vulpix", "tyranitar", "hippowdown", "gigalith"}
 def is_weather_setter(species):
@@ -191,7 +192,7 @@ def get_weather_duration(battle):
             return 8
     return 5
 
-weather_seen = {}
+weather_seen = {} # Implemented to work around a Poke-env bug where weather start turn is incremented every turn
 def weather_turns_left(battle):
     if not battle.weather:
         return 0
