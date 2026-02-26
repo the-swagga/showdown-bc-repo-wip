@@ -3,8 +3,7 @@ import csv
 import os
 
 from poke_env.player import Player
-from poke_env.battle import Field, SideCondition, Weather
-from torch.distributions import LogNormal
+from poke_env.battle import Field, SideCondition, Weather, Effect
 
 # BUG: Weather and Terrain is not seen by poke env until the turn after it is set
 
@@ -30,14 +29,25 @@ FIELDNAMES = [
     "my_side_aurora_veil",
     "opp_side_aurora_veil",
     "my_pokemon",
-    "my_tera_type",
-    "my_is_tera",
+    "my_ability",
+    "my_item",
     "my_type_1",
     "my_type_2",
+    "my_is_tera",
+    "my_can_tera",
+    "my_tera_type",
+    "my_atk_boost",
+    "my_def_boost",
+    "my_spa_boost",
+    "my_spd_boost",
+    "my_spe_boost",
     "my_hp",
     "my_status",
-    "my_boosts",
-    "my_team",
+    "my_turns_asleep_or_toxic",
+    "my_turns_protect",
+    "my_effect_1",
+    "my_effect_2",
+    "my_first_turn",
     "opp_pokemon",
     "opp_is_tera",
     "opp_type_1",
@@ -74,9 +84,9 @@ class TurnObserver(Player):
                     self.battle_data.append({**self.prev_state, "action": action})
 
             # --- Debug --- #
-            print()
 
             my = battle.active_pokemon
+            my_effect_1, my_effect_2 = get_effects(my)
             opp = battle.opponent_active_pokemon
 
             self.prev_state = {
@@ -103,25 +113,37 @@ class TurnObserver(Player):
                 "opp_side_aurora_veil": get_opp_side_screen(battle, "AURORA_VEIL"),
 
                 # --- My Pokemon State Data --- #
-
-                # --- Misc Debug --- #
                 "my_pokemon": my.species,
-                "my_tera_type": my.tera_type,
-                "my_is_tera": my.is_terastallized,
+                "my_ability": my.ability,
+                "my_item": my.item,
                 "my_type_1": my.type_1,
                 "my_type_2": my.type_2,
+                "my_is_tera": my.is_terastallized,
+                "my_can_tera": battle.can_tera,
+                "my_tera_type": my.tera_type,
+                "my_atk_boost": get_atk_boost(my),
+                "my_def_boost": get_def_boost(my),
+                "my_spa_boost": get_spa_boost(my),
+                "my_spd_boost": get_spd_boost(my),
+                "my_spe_boost": get_spe_boost(my),
                 "my_hp": my.current_hp_fraction,
                 "my_status": my.status,
-                "my_boosts": str(my.boosts),
-                "my_team": str({p.species: p.current_hp_fraction for p in battle.team.values()}),
-                "opp_pokemon": opp.species if opp else None,
-                "opp_is_tera": opp.is_terastallized if opp else None,
-                "opp_type_1": opp.type_1 if opp else None,
-                "opp_type_2": opp.type_2 if opp else None,
-                "opp_hp": opp.current_hp_fraction if opp else None,
-                "opp_status": opp.status if opp else None,
-                "opp_boosts": str(opp.boosts) if opp else None,
-                "opp_team": str({p.species: p.current_hp_fraction for p in battle.opponent_team.values()}),
+                "my_turns_asleep_or_toxic": my.status_counter,
+                "my_turns_protect": my.protect_counter,
+                "my_effect_1": my_effect_1,
+                "my_effect_2": my_effect_2,
+
+
+                # --- Placeholder Debug --- #
+                #"my_team": str({p.species: p.current_hp_fraction for p in battle.team.values()}),
+                #"opp_pokemon": opp.species if opp else None,
+                #"opp_is_tera": opp.is_terastallized if opp else None,
+                #"opp_type_1": opp.type_1 if opp else None,
+                #"opp_type_2": opp.type_2 if opp else None,
+                #"opp_hp": opp.current_hp_fraction if opp else None,
+                #"opp_status": opp.status if opp else None,
+                #"opp_boosts": str(opp.boosts) if opp else None,
+                #"opp_team": str({p.species: p.current_hp_fraction for p in battle.opponent_team.values()}),
             }
 
         try:
@@ -351,3 +373,37 @@ def get_opp_side_screen_turns_left(battle, screen):
         turns_left = 1
 
     return turns_left
+
+
+# --- Pokémon processing --- #
+
+def get_atk_boost(pokemon):
+    return pokemon.boosts["atk"]
+
+def get_def_boost(pokemon):
+    return pokemon.boosts["def"]
+
+def get_spa_boost(pokemon):
+    return pokemon.boosts["spa"]
+
+def get_spd_boost(pokemon):
+    return pokemon.boosts["spd"]
+
+def get_spe_boost(pokemon):
+    return pokemon.boosts["spe"]
+
+EFFECTS = {Effect.ENCORE, Effect.TAUNT, Effect.TRAPPED, Effect.PARTIALLY_TRAPPED, Effect.YAWN, Effect.SUBSTITUTE, Effect.CONFUSION, Effect.LEECH_SEED, Effect.HEAL_BLOCK}
+
+def get_effects(pokemon):
+    effect_1 = None
+    effect_2 = None
+
+    for effect in pokemon.effects:
+        if effect in EFFECTS:
+            if effect_1 is None:
+                effect_1 = effect
+            elif effect_2 is None:
+                effect_2 = effect
+                break
+
+    return effect_1, effect_2
