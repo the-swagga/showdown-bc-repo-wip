@@ -4,6 +4,9 @@ import os
 
 from poke_env.player import Player
 from poke_env.battle import Field, SideCondition, Weather
+from torch.distributions import LogNormal
+
+# BUG: Weather and Terrain is not seen by poke env until the turn after it is set
 
 FIELDNAMES = [
     "weather",
@@ -59,45 +62,19 @@ class TurnObserver(Player):
         # Overrides Poke-env choose_move method
 
         if not battle.force_switch:
+            weather_tl = weather_turns_left(battle)
+            terrain_tl = terrain_turns_left(battle)
             if self.prev_state:
-                action = get_action(battle, battle.observations.get(battle.turn - 1))
+                action, weather_setter, terrain_setter = get_action(battle, battle.observations.get(battle.turn - 1))
                 print(action)
                 if action:
+                    if weather_setter:
+                        weather_tl = 8
+                    if terrain_setter:
+                        terrain_tl = 5
                     self.battle_data.append({**self.prev_state, "action": action})
 
-            my_active_mon = battle.active_pokemon
-            opp_active_mon = battle.opponent_active_pokemon
-            my_team = battle.team
-            opp_team = battle.opponent_team
-
-            # --- Battle State --- #
-            print(f"Weather: {battle.weather}")
-            print(f"My side hazards: {battle.side_conditions}")
-            print(f"Opponent side hazards: {battle.opponent_side_conditions}")
-            print(f"Terrain: {battle.fields}")
-            print()
-
-            # --- Player State --- #
-            print(f"My team: {my_team}")
-            print(f"My pokemon: {my_active_mon.species}")
-            print(f"Tera type: {my_active_mon.tera_type}")
-            print(f"Is tera: {my_active_mon.is_terastallized}")
-            print(f"Primary type: {my_active_mon.type_1}")
-            print(f"Secondary type: {my_active_mon.type_2}")
-            print(f"HP: {my_active_mon.current_hp_fraction}")
-            print(f"Status: {my_active_mon.status}")
-            print(f"Boosts: {my_active_mon.boosts}")
-            print()
-
-            # --- Opponent State --- #
-            print(f"Opponent team: {opp_team}")
-            print(f"Opponent pokemon: {opp_active_mon.species}")
-            print(f"Is tera: {opp_active_mon.is_terastallized}")
-            print(f"Primary type: {opp_active_mon.type_1}")
-            print(f"Secondary type: {opp_active_mon.type_2}")
-            print(f"HP: {opp_active_mon.current_hp_fraction}")
-            print(f"Status: {opp_active_mon.status}")
-            print(f"Boosts: {opp_active_mon.boosts}")
+            # --- Debug --- #
             print()
 
             my = battle.active_pokemon
@@ -106,9 +83,9 @@ class TurnObserver(Player):
             self.prev_state = {
                 # --- Battle State Data --- #
                 "weather": get_weather(battle),
-                "weather_turns_left": weather_turns_left(battle),
+                "weather_turns_left": weather_tl,
                 "terrain": get_terrain(battle),
-                "terrain_turns_left": terrain_turns_left(battle),
+                "terrain_turns_left": terrain_tl,
                 "trick_room": get_trick_room(battle),
                 "trick_room_turns_left": trick_room_turns_left(battle),
                 "my_side_stealth_rock": get_my_side_stealth_rock(battle),
@@ -155,8 +132,12 @@ class TurnObserver(Player):
 
     def _battle_finished_callback(self, battle):
         if self.prev_state:
-            final_action = get_action(battle, battle.observations.get(battle.turn))
+            final_action, weather_setter, terrain_setter = get_action(battle, battle.observations.get(battle.turn))
             if final_action:
+                if weather_setter:
+                    self.prev_state["weather_turns_left"] = 8
+                if terrain_setter:
+                    self.prev_state["terrain_turns_left"] = 5
                 self.battle_data.append({**self.prev_state, "action": final_action})
 
         if self.battle_data:
@@ -172,17 +153,28 @@ class TurnObserver(Player):
 
 def get_action(battle, observation):
     if observation is None:
-        return None
+        return None, False, False
 
     for event in observation.events:
         if len(event) < 4 or battle.player_role not in event[2]:
             continue
 
         if event[1] in ("move", "switch"):
-            return event[3]
+            species = event[3].split(",")[0].lower().replace(" ", "").replace("-", "")
+            return event[3], is_weather_setter(species), is_terrain_setter(species)
 
-    return None
+    return None, False, False
 
+
+# --- Special Case Processing --- #
+
+WEATHER_SETTERS = {"kyogre", "pelipper", "politoed", "koraidon", "groudon", "torkoal", "ninetales", "vulpix", "tyranitar", "hippowdown", "gigalith"}
+def is_weather_setter(species):
+    return species in WEATHER_SETTERS
+
+TERRAIN_SETTERS = {"miraidon", "tapukoko", "pincurchin", "tapubulu", "rillaboom", "thwackey", "tapufini", "weezinggalar", "tapulele", "indeedee", "indeedee-f", "indeedee-m"}
+def is_terrain_setter(species):
+    return species in TERRAIN_SETTERS
 
 # --- Weather Processing --- #
 
@@ -193,20 +185,31 @@ def get_weather(battle):
     for weather in battle.weather:
         return weather.name
 
+def get_weather_duration(battle):
+    for weather in battle.weather:
+        if weather == Weather.RAINDANCE or weather == Weather.SUNNYDAY:
+            return 8
+    return 5
+
+weather_seen = {}
 def weather_turns_left(battle):
     if not battle.weather:
         return 0
 
-    turns_left = 0
-    for weather, start_turn in battle.weather.items():
-        if weather == Weather.RAINDANCE or weather == Weather.SUNNYDAY:
-            weather_duration = 8
-        else:
-            weather_duration = 5
+    for weather in list(weather_seen):
+        if weather not in battle.weather:
+            del weather_seen[weather]
+    for weather in battle.weather:
+        if weather not in weather_seen:
+            weather_seen[weather] = battle.turn
 
+    turns_left = 0
+    for weather in battle.weather:
+        start_turn = weather_seen[weather]
+        weather_duration = get_weather_duration(battle)
         turns_left = weather_duration - (battle.turn - start_turn)
-        if turns_left < 1:
-            turns_left = 1
+        if turns_left < 0:
+            turns_left = 0
 
         return turns_left
 
@@ -231,8 +234,8 @@ def terrain_turns_left(battle):
     for field, start_turn in battle.fields.items():
         if field.is_terrain:
             turns_left = 5 - (battle.turn - start_turn)
-            if turns_left < 1:
-                turns_left = 1
+            if turns_left < 0:
+                turns_left = 0
             break
 
     return turns_left
@@ -258,8 +261,8 @@ def trick_room_turns_left(battle):
     for field, start_turn in battle.fields.items():
         if field == Field.TRICK_ROOM:
             turns_left = 5 - (battle.turn - start_turn)
-            if turns_left < 1:
-                turns_left = 1
+            if turns_left < 0:
+                turns_left = 0
             break
 
     return turns_left

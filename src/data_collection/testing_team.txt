@@ -1,0 +1,61 @@
+Torkoal @ Heat Rock
+Ability: Drought
+Tera Type: Fire
+EVs: 248 HP / 8 Atk / 252 SpA
+Quiet Nature
+- Clear Smog
+- Curse
+- Earth Power
+- Facade
+
+Pelipper @ Damp Rock
+Ability: Drizzle
+Tera Type: Water
+EVs: 248 HP / 8 Atk / 252 SpA
+Quiet Nature
+- Air Slash
+- Brave Bird
+- Hurricane
+- Gunk Shot
+
+Deoxys-Speed @ Assault Vest
+Ability: Pressure
+Tera Type: Psychic
+EVs: 248 HP / 8 Atk / 252 Spe
+Jolly Nature
+- Spikes
+- Stealth Rock
+- Calm Mind
+- Extreme Speed
+
+Spinarak @ Choice Band
+Ability: Swarm
+Tera Type: Bug
+EVs: 248 HP / 8 SpA / 252 SpD
+Calm Nature
+IVs: 0 Atk
+- Toxic Spikes
+- Sticky Web
+- Disable
+- Giga Drain
+
+Clefable @ Choice Scarf
+Ability: Cute Charm
+Tera Type: Fairy
+EVs: 4 Atk / 252 SpA / 252 Spe
+Hasty Nature
+- Calm Mind
+- Brick Break
+- Drain Punch
+- Draining Kiss
+
+Dondozo @ Choice Scarf
+Ability: Oblivious
+Tera Type: Water
+EVs: 252 Atk / 4 SpA / 252 Spe
+Naive Nature
+- Chilling Water
+- Earthquake
+- Facade
+- Aqua Tail
+
