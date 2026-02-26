@@ -208,7 +208,7 @@ def weather_turns_left(battle):
         if turns_left < 1:
             turns_left = 1
 
-    return turns_left
+        return turns_left
 
 
 # --- Terrain Processing --- #
@@ -236,6 +236,7 @@ def terrain_turns_left(battle):
             break
 
     return turns_left
+
 
 # --- Trick Room Processing --- #
 
