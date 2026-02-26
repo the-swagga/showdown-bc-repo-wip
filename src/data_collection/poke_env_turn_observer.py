@@ -120,7 +120,6 @@ class TurnObserver(Player):
                 "my_type_2": my.type_2,
                 "my_is_tera": my.is_terastallized,
                 "my_can_tera": battle.can_tera,
-                "my_tera_type": my.tera_type,
                 "my_atk_boost": get_atk_boost(my),
                 "my_def_boost": get_def_boost(my),
                 "my_spa_boost": get_spa_boost(my),
