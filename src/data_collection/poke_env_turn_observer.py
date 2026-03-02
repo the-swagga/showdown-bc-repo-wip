@@ -4,6 +4,7 @@ import os
 
 from poke_env.player import Player
 from poke_env.battle import Field, SideCondition, Weather, Effect
+from sympy import false
 
 # BUG: Weather and Terrain is not seen by poke env until the turn after it is set
 
@@ -48,11 +49,38 @@ FIELDNAMES = [
     "my_turns_protect",
     "my_effect_1",
     "my_effect_2",
-    "my_first_turn",
     "my_move_1",
+    "my_move_1_category",
+    "my_move_1_type",
+    "my_move_1_power",
+    "my_move_1_accuracy",
+    "my_move_1_self_boost",
+    "my_move_1_pivot",
+    "my_move_1_priority",
     "my_move_2",
+    "my_move_2_category",
+    "my_move_2_type",
+    "my_move_2_power",
+    "my_move_2_accuracy",
+    "my_move_2_self_boost",
+    "my_move_2_pivot",
+    "my_move_2_priority",
     "my_move_3",
+    "my_move_3_category",
+    "my_move_3_type",
+    "my_move_3_power",
+    "my_move_3_accuracy",
+    "my_move_3_self_boost",
+    "my_move_3_pivot",
+    "my_move_3_priority",
     "my_move_4",
+    "my_move_4_category",
+    "my_move_4_type",
+    "my_move_4_power",
+    "my_move_4_accuracy",
+    "my_move_4_self_boost",
+    "my_move_4_pivot",
+    "my_move_4_priority",
 
     "opp_pokemon",
     "opp_ability",
@@ -72,7 +100,6 @@ FIELDNAMES = [
     "opp_turns_protect",
     "opp_effect_1",
     "opp_effect_2",
-    "opp_first_turn",
     "opp_move_1",
     "opp_move_2",
     "opp_move_3",
@@ -107,11 +134,17 @@ class TurnObserver(Player):
 
             my = battle.active_pokemon
             my_effect_1, my_effect_2 = get_effects(my)
-            my_moves = get_known_moves(my)
+            my_move_1 = get_move_at_index(my, 1)
+            my_move_2 = get_move_at_index(my, 2)
+            my_move_3 = get_move_at_index(my, 3)
+            my_move_4 = get_move_at_index(my, 4)
 
             opp = battle.opponent_active_pokemon
             opp_effect_1, opp_effect_2 = get_effects(opp)
-            opp_moves = get_known_moves(opp)
+            opp_move_1 = get_move_at_index(opp, 1)
+            opp_move_2 = get_move_at_index(opp, 2)
+            opp_move_3 = get_move_at_index(opp, 3)
+            opp_move_4 = get_move_at_index(opp, 4)
 
             self.prev_state = {
                 # --- Battle State Data --- #
@@ -155,11 +188,38 @@ class TurnObserver(Player):
                 "my_turns_protect": my.protect_counter,
                 "my_effect_1": my_effect_1,
                 "my_effect_2": my_effect_2,
-                "my_first_turn": my.first_turn,
-                "my_move_1": get_move_at_index(my_moves, 1).id,
-                "my_move_2": get_move_at_index(my_moves, 2).id,
-                "my_move_3": get_move_at_index(my_moves, 3).id,
-                "my_move_4": get_move_at_index(my_moves, 4).id,
+                "my_move_1": my_move_1.id if my_move_1 else None,
+                "my_move_1_category": my_move_1.category.name if my_move_1 else None,
+                "my_move_1_type": my_move_1.type if my_move_1 else None,
+                "my_move_1_power": get_max_power(my_move_1),
+                "my_move_1_accuracy": my_move_1.accuracy if my_move_1 else None,
+                "my_move_1_self_boost": check_self_boost(my_move_1),
+                "my_move_1_pivot": my_move_1.self_switch if my_move_1 else None,
+                "my_move_1_priority": my_move_1.priority if my_move_1 else None,
+                "my_move_2": my_move_2.id,
+                "my_move_2_category": my_move_2.category.name if my_move_2 else None,
+                "my_move_2_type": my_move_2.type if my_move_2 else None,
+                "my_move_2_power": get_max_power(my_move_2),
+                "my_move_2_accuracy": my_move_2.accuracy if my_move_2 else None,
+                "my_move_2_self_boost": check_self_boost(my_move_2),
+                "my_move_2_pivot": my_move_2.self_switch if my_move_2 else None,
+                "my_move_2_priority": my_move_2.priority if my_move_2 else None,
+                "my_move_3": my_move_3.id,
+                "my_move_3_category": my_move_3.category.name if my_move_3 else None,
+                "my_move_3_type": my_move_3.type if my_move_3 else None,
+                "my_move_3_power": get_max_power(my_move_3),
+                "my_move_3_accuracy": my_move_3.accuracy if my_move_3 else None,
+                "my_move_3_self_boost": check_self_boost(my_move_3),
+                "my_move_3_pivot": my_move_3.self_switch if my_move_3 else None,
+                "my_move_3_priority": my_move_3.priority if my_move_3 else None,
+                "my_move_4": my_move_4.id,
+                "my_move_4_category": my_move_4.category.name if my_move_4 else None,
+                "my_move_4_type": my_move_4.type if my_move_4 else None,
+                "my_move_4_power": get_max_power(my_move_4),
+                "my_move_4_accuracy": my_move_4.accuracy if my_move_4 else None,
+                "my_move_4_self_boost": check_self_boost(my_move_4),
+                "my_move_4_pivot": my_move_4.self_switch if my_move_4 else None,
+                "my_move_4_priority": my_move_4.priority if my_move_4 else None,
 
                 # --- Opponent Active Pokemon State Data --- #
                 "opp_pokemon": opp.species,
@@ -180,14 +240,10 @@ class TurnObserver(Player):
                 "opp_turns_protect": opp.protect_counter,
                 "opp_effect_1": opp_effect_1,
                 "opp_effect_2": opp_effect_2,
-                "opp_first_turn": opp.first_turn,
-                "opp_move_1": get_move_at_index(opp_moves, 1).id,
-                "opp_move_2": get_move_at_index(opp_moves, 2).id,
-                "opp_move_3": get_move_at_index(opp_moves, 3).id,
-                "opp_move_4": get_move_at_index(opp_moves, 4).id,
-
-                # ---
-
+                "opp_move_1": opp_move_1.id if opp_move_1 else None,
+                "opp_move_2": opp_move_2.id if opp_move_2 else None,
+                "opp_move_3": opp_move_3.id if opp_move_3 else None,
+                "opp_move_4": opp_move_4.id if opp_move_4 else None,
 
                 # --- Placeholder Debug --- #
                 #"my_team": str({p.species: p.current_hp_fraction for p in battle.team.values()}),
@@ -466,21 +522,31 @@ def get_effects(pokemon):
 
 # --- Moves Processing --- #
 
-def get_known_moves(pokemon):
-    known_moves = []
+def get_move_at_index(pokemon, index):
+    moves = []
 
     for move in pokemon.moves.values():
-        known_moves.append(move)
+        moves.append(move)
 
-    # Make the array size 8 as maximum amount of moves (accounting for Illusion ability)
-    while len(known_moves) < 8:
-        known_moves.append(None)
-
-    return known_moves
-
-def get_move_at_index(moves, index):
-    if moves is not None:
-        if moves[index - 1] is not None:
-            return moves[index - 1]
+    if index - 1 < len(moves):
+        return moves[index - 1]
 
     return None
+
+def get_max_power(move):
+    if move is None:
+        return None
+
+    max_hits = move.n_hit[1]
+    power = move.base_power
+
+    return max_hits * power
+
+def check_self_boost(move):
+    if move is None:
+        return None
+
+    if move.self_boost is not None:
+        return True
+
+    return False
