@@ -28,6 +28,7 @@ FIELDNAMES = [
     "opp_side_reflect",
     "my_side_aurora_veil",
     "opp_side_aurora_veil",
+
     "my_pokemon",
     "my_ability",
     "my_item",
@@ -48,14 +49,35 @@ FIELDNAMES = [
     "my_effect_1",
     "my_effect_2",
     "my_first_turn",
+    "my_move_1",
+    "my_move_2",
+    "my_move_3",
+    "my_move_4",
+
     "opp_pokemon",
-    "opp_is_tera",
+    "opp_ability",
+    "opp_item",
     "opp_type_1",
     "opp_type_2",
+    "opp_is_tera",
+    "opp_can_tera",
+    "opp_atk_boost",
+    "opp_def_boost",
+    "opp_spa_boost",
+    "opp_spd_boost",
+    "opp_spe_boost",
     "opp_hp",
     "opp_status",
-    "opp_boosts",
-    "opp_team",
+    "opp_turns_asleep_or_toxic",
+    "opp_turns_protect",
+    "opp_effect_1",
+    "opp_effect_2",
+    "opp_first_turn",
+    "opp_move_1",
+    "opp_move_2",
+    "opp_move_3",
+    "opp_move_4",
+
     "action"
 ]
 
@@ -83,11 +105,13 @@ class TurnObserver(Player):
                         terrain_tl = 5
                     self.battle_data.append({**self.prev_state, "action": action})
 
-            # --- Debug --- #
-
             my = battle.active_pokemon
             my_effect_1, my_effect_2 = get_effects(my)
+            my_moves = get_known_moves(my)
+
             opp = battle.opponent_active_pokemon
+            opp_effect_1, opp_effect_2 = get_effects(opp)
+            opp_moves = get_known_moves(opp)
 
             self.prev_state = {
                 # --- Battle State Data --- #
@@ -112,7 +136,7 @@ class TurnObserver(Player):
                 "my_side_aurora_veil": get_my_side_screen(battle, "AURORA_VEIL"),
                 "opp_side_aurora_veil": get_opp_side_screen(battle, "AURORA_VEIL"),
 
-                # --- My Pokemon State Data --- #
+                # --- My Active Pokemon State Data --- #
                 "my_pokemon": my.species,
                 "my_ability": my.ability,
                 "my_item": my.item,
@@ -131,6 +155,38 @@ class TurnObserver(Player):
                 "my_turns_protect": my.protect_counter,
                 "my_effect_1": my_effect_1,
                 "my_effect_2": my_effect_2,
+                "my_first_turn": my.first_turn,
+                "my_move_1": get_move_at_index(my_moves, 1).id,
+                "my_move_2": get_move_at_index(my_moves, 2).id,
+                "my_move_3": get_move_at_index(my_moves, 3).id,
+                "my_move_4": get_move_at_index(my_moves, 4).id,
+
+                # --- Opponent Active Pokemon State Data --- #
+                "opp_pokemon": opp.species,
+                "opp_ability": opp.ability,
+                "opp_item": opp.item,
+                "opp_type_1": opp.type_1,
+                "opp_type_2": opp.type_2,
+                "opp_is_tera": opp.is_terastallized,
+                "opp_can_tera": battle.can_tera,
+                "opp_atk_boost": get_atk_boost(opp),
+                "opp_def_boost": get_def_boost(opp),
+                "opp_spa_boost": get_spa_boost(opp),
+                "opp_spd_boost": get_spd_boost(opp),
+                "opp_spe_boost": get_spe_boost(opp),
+                "opp_hp": opp.current_hp_fraction,
+                "opp_status": opp.status,
+                "opp_turns_asleep_or_toxic": opp.status_counter,
+                "opp_turns_protect": opp.protect_counter,
+                "opp_effect_1": opp_effect_1,
+                "opp_effect_2": opp_effect_2,
+                "opp_first_turn": opp.first_turn,
+                "opp_move_1": get_move_at_index(opp_moves, 1).id,
+                "opp_move_2": get_move_at_index(opp_moves, 2).id,
+                "opp_move_3": get_move_at_index(opp_moves, 3).id,
+                "opp_move_4": get_move_at_index(opp_moves, 4).id,
+
+                # ---
 
 
                 # --- Placeholder Debug --- #
@@ -406,3 +462,25 @@ def get_effects(pokemon):
                 break
 
     return effect_1, effect_2
+
+
+# --- Moves Processing --- #
+
+def get_known_moves(pokemon):
+    known_moves = []
+
+    for move in pokemon.moves.values():
+        known_moves.append(move)
+
+    # Make the array size 8 as maximum amount of moves (accounting for Illusion ability)
+    while len(known_moves) < 8:
+        known_moves.append(None)
+
+    return known_moves
+
+def get_move_at_index(moves, index):
+    if moves is not None:
+        if moves[index - 1] is not None:
+            return moves[index - 1]
+
+    return None
