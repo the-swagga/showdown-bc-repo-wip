@@ -37,7 +37,7 @@ async def main():
         print()
         print(f"Queueing for {FORMAT}")
         print()
-        await challenge_player(bot, TEST_OPP)
+        await queue_for_battle(bot)
         print()
         print("Battle finished.")
         print()
