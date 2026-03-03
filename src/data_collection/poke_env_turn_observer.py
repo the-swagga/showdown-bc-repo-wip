@@ -4,9 +4,10 @@ import os
 
 from poke_env.player import Player
 from poke_env.battle import Field, SideCondition, Weather, Effect
-from sympy import false
+
 
 # BUG: Weather and Terrain is not seen by poke env until the turn after it is set
+
 
 FIELDNAMES = [
     "weather",
@@ -37,7 +38,6 @@ FIELDNAMES = [
     "my_type_2",
     "my_is_tera",
     "my_can_tera",
-    "my_tera_type",
     "my_atk_boost",
     "my_def_boost",
     "my_spa_boost",
@@ -110,6 +110,11 @@ FIELDNAMES = [
     "my_switch_3",
     "my_switch_4",
     "my_switch_5",
+    "opp_switch_1",
+    "opp_switch_2",
+    "opp_switch_3",
+    "opp_switch_4",
+    "opp_switch_5",
 
     "action"
 ]
@@ -122,9 +127,16 @@ class TurnObserver(Player):
         self.prev_state = None
         self.battle_data = []
         self.csv_path = "test.csv"
+        self.opponent_teampreview = None
+
+    def set_opponent_teampreview(self, otp):
+        self.opponent_teampreview = otp
 
     async def choose_move(self, battle):
         # Overrides Poke-env choose_move method
+
+        if battle.teampreview_opponent_team and self.opponent_teampreview is None:
+            self.set_opponent_teampreview(battle.teampreview_opponent_team)
 
         if not battle.force_switch:
             weather_tl = weather_turns_left(battle)
@@ -151,6 +163,13 @@ class TurnObserver(Player):
             opp_move_2 = get_move_at_index(opp, 2)
             opp_move_3 = get_move_at_index(opp, 3)
             opp_move_4 = get_move_at_index(opp, 4)
+
+            my_switches = []
+            for i in range(1, 6):
+                my_switches.append(safe_my_available_switches(battle, i))
+            opp_switches = []
+            for i in range(1, 6):
+                opp_switches.append(opp_available_switches(battle, self.opponent_teampreview, i))
 
             self.prev_state = {
                 # --- Battle State Data --- #
@@ -234,7 +253,7 @@ class TurnObserver(Player):
                 "opp_type_1": opp.type_1,
                 "opp_type_2": opp.type_2,
                 "opp_is_tera": opp.is_terastallized,
-                "opp_can_tera": battle.can_tera,
+                "opp_can_tera": not battle.opponent_used_tera,
                 "opp_atk_boost": get_atk_boost(opp),
                 "opp_def_boost": get_def_boost(opp),
                 "opp_spa_boost": get_spa_boost(opp),
@@ -252,11 +271,16 @@ class TurnObserver(Player):
                 "opp_move_4": opp_move_4.id if opp_move_4 else None,
 
                 # --- Team Data / Available Switches --- #
-                "my_switch_1": safe_my_available_switches(battle, 1),
-                "my_switch_2": safe_my_available_switches(battle, 2),
-                "my_switch_3": safe_my_available_switches(battle, 3),
-                "my_switch_4": safe_my_available_switches(battle, 4),
-                "my_switch_5": safe_my_available_switches(battle, 5),
+                "my_switch_1": my_switches[0].species if my_switches[0] else None,
+                "my_switch_2": my_switches[1].species if my_switches[1] else None,
+                "my_switch_3": my_switches[2].species if my_switches[2] else None,
+                "my_switch_4": my_switches[3].species if my_switches[3] else None,
+                "my_switch_5": my_switches[4].species if my_switches[4] else None,
+                "opp_switch_1": opp_switches[0].species if opp_switches[0] else None,
+                "opp_switch_2": opp_switches[1].species if opp_switches[1] else None,
+                "opp_switch_3": opp_switches[2].species if opp_switches[2] else None,
+                "opp_switch_4": opp_switches[3].species if opp_switches[3] else None,
+                "opp_switch_5": opp_switches[4].species if opp_switches[4] else None,
 
             }
 
@@ -560,7 +584,22 @@ def check_self_boost(move):
 
 def safe_my_available_switches(battle, index):
     switches = battle.available_switches
+
     if len(switches) >= index:
-        return switches[index - 1].species
+        return switches[index - 1]
+
+    return None
+
+def opp_available_switches(battle, opp_team, index):
+    if opp_team is None:
+        return None
+
+    switches = []
+    for member in opp_team:
+        if member.species != battle.opponent_active_pokemon.species and not member.fainted:
+            switches.append(member)
+
+    if len(switches) >= index:
+        return switches[index - 1]
 
     return None
