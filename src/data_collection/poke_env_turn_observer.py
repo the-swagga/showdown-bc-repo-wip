@@ -3,8 +3,7 @@ import csv
 import os
 
 from poke_env.player import Player
-from poke_env.battle import Field, SideCondition, Weather, Effect
-
+from poke_env.battle import Field, SideCondition, Weather, Effect, AbstractBattle
 
 # BUG: Weather and Terrain is not seen by poke env until the turn after it is set
 
@@ -106,15 +105,36 @@ FIELDNAMES = [
     "opp_move_4",
 
     "my_switch_1",
+    "my_switch_1_hp",
+    "my_switch_1_status",
     "my_switch_2",
+    "my_switch_2_hp",
+    "my_switch_2_status",
     "my_switch_3",
+    "my_switch_3_hp",
+    "my_switch_3_status",
     "my_switch_4",
+    "my_switch_4_hp",
+    "my_switch_4_status",
     "my_switch_5",
+    "my_switch_5_hp",
+    "my_switch_5_status",
+
     "opp_switch_1",
+    "opp_switch_1_hp",
+    "opp_switch_1_status",
     "opp_switch_2",
+    "opp_switch_2_hp",
+    "opp_switch_2_status",
     "opp_switch_3",
+    "opp_switch_3_hp",
+    "opp_switch_3_status",
     "opp_switch_4",
+    "opp_switch_4_hp",
+    "opp_switch_4_status",
     "opp_switch_5",
+    "opp_switch_5_hp",
+    "opp_switch_5_status",
 
     "action"
 ]
@@ -132,11 +152,12 @@ class TurnObserver(Player):
     def set_opponent_teampreview(self, otp):
         self.opponent_teampreview = otp
 
+    def teampreview(self, battle):
+        self.set_opponent_teampreview(battle.teampreview_opponent_team)
+        return "/team 3"
+
     async def choose_move(self, battle):
         # Overrides Poke-env choose_move method
-
-        if battle.teampreview_opponent_team and self.opponent_teampreview is None:
-            self.set_opponent_teampreview(battle.teampreview_opponent_team)
 
         if not battle.force_switch:
             weather_tl = weather_turns_left(battle)
@@ -198,8 +219,8 @@ class TurnObserver(Player):
                 "my_pokemon": my.species,
                 "my_ability": my.ability,
                 "my_item": my.item,
-                "my_type_1": my.type_1,
-                "my_type_2": my.type_2,
+                "my_type_1": my.type_1.name,
+                "my_type_2": my.type_2.name,
                 "my_is_tera": my.is_terastallized,
                 "my_can_tera": battle.can_tera,
                 "my_atk_boost": get_atk_boost(my),
@@ -213,9 +234,11 @@ class TurnObserver(Player):
                 "my_turns_protect": my.protect_counter,
                 "my_effect_1": my_effect_1,
                 "my_effect_2": my_effect_2,
+
+                # --- My Active Pokemon Move Data --- #
                 "my_move_1": my_move_1.id if my_move_1 else None,
                 "my_move_1_category": my_move_1.category.name if my_move_1 else None,
-                "my_move_1_type": my_move_1.type if my_move_1 else None,
+                "my_move_1_type": my_move_1.type.name if my_move_1 else None,
                 "my_move_1_power": get_max_power(my_move_1),
                 "my_move_1_accuracy": my_move_1.accuracy if my_move_1 else None,
                 "my_move_1_self_boost": check_self_boost(my_move_1),
@@ -223,7 +246,7 @@ class TurnObserver(Player):
                 "my_move_1_priority": my_move_1.priority if my_move_1 else None,
                 "my_move_2": my_move_2.id,
                 "my_move_2_category": my_move_2.category.name if my_move_2 else None,
-                "my_move_2_type": my_move_2.type if my_move_2 else None,
+                "my_move_2_type": my_move_2.type.name if my_move_2 else None,
                 "my_move_2_power": get_max_power(my_move_2),
                 "my_move_2_accuracy": my_move_2.accuracy if my_move_2 else None,
                 "my_move_2_self_boost": check_self_boost(my_move_2),
@@ -231,7 +254,7 @@ class TurnObserver(Player):
                 "my_move_2_priority": my_move_2.priority if my_move_2 else None,
                 "my_move_3": my_move_3.id,
                 "my_move_3_category": my_move_3.category.name if my_move_3 else None,
-                "my_move_3_type": my_move_3.type if my_move_3 else None,
+                "my_move_3_type": my_move_3.type.name if my_move_3 else None,
                 "my_move_3_power": get_max_power(my_move_3),
                 "my_move_3_accuracy": my_move_3.accuracy if my_move_3 else None,
                 "my_move_3_self_boost": check_self_boost(my_move_3),
@@ -239,7 +262,7 @@ class TurnObserver(Player):
                 "my_move_3_priority": my_move_3.priority if my_move_3 else None,
                 "my_move_4": my_move_4.id,
                 "my_move_4_category": my_move_4.category.name if my_move_4 else None,
-                "my_move_4_type": my_move_4.type if my_move_4 else None,
+                "my_move_4_type": my_move_4.type.name if my_move_4 else None,
                 "my_move_4_power": get_max_power(my_move_4),
                 "my_move_4_accuracy": my_move_4.accuracy if my_move_4 else None,
                 "my_move_4_self_boost": check_self_boost(my_move_4),
@@ -250,8 +273,8 @@ class TurnObserver(Player):
                 "opp_pokemon": opp.species,
                 "opp_ability": opp.ability,
                 "opp_item": opp.item,
-                "opp_type_1": opp.type_1,
-                "opp_type_2": opp.type_2,
+                "opp_type_1": opp.type_1.name,
+                "opp_type_2": opp.type_2.name,
                 "opp_is_tera": opp.is_terastallized,
                 "opp_can_tera": not battle.opponent_used_tera,
                 "opp_atk_boost": get_atk_boost(opp),
@@ -270,25 +293,45 @@ class TurnObserver(Player):
                 "opp_move_3": opp_move_3.id if opp_move_3 else None,
                 "opp_move_4": opp_move_4.id if opp_move_4 else None,
 
-                # --- Team Data / Available Switches --- #
+                # --- My Available Switches --- #
                 "my_switch_1": my_switches[0].species if my_switches[0] else None,
+                "my_switch_1_hp": my_switches[0].current_hp_fraction if my_switches[0] else 0,
+                "my_switch_1_status": my_switches[0].status if my_switches[0] else None,
                 "my_switch_2": my_switches[1].species if my_switches[1] else None,
+                "my_switch_2_hp": my_switches[1].current_hp_fraction if my_switches[1] else 0,
+                "my_switch_2_status": my_switches[1].status if my_switches[1] else None,
                 "my_switch_3": my_switches[2].species if my_switches[2] else None,
+                "my_switch_3_hp": my_switches[2].current_hp_fraction if my_switches[2] else 0,
+                "my_switch_3_status": my_switches[2].status if my_switches[2] else None,
                 "my_switch_4": my_switches[3].species if my_switches[3] else None,
+                "my_switch_4_hp": my_switches[3].current_hp_fraction if my_switches[3] else 0,
+                "my_switch_4_status": my_switches[3].status if my_switches[3] else None,
                 "my_switch_5": my_switches[4].species if my_switches[4] else None,
-                "opp_switch_1": opp_switches[0].species if opp_switches[0] else None,
-                "opp_switch_2": opp_switches[1].species if opp_switches[1] else None,
-                "opp_switch_3": opp_switches[2].species if opp_switches[2] else None,
-                "opp_switch_4": opp_switches[3].species if opp_switches[3] else None,
-                "opp_switch_5": opp_switches[4].species if opp_switches[4] else None,
+                "my_switch_5_hp": my_switches[4].current_hp_fraction if my_switches[4] else 0,
+                "my_switch_5_status": my_switches[4].status if my_switches[4] else None,
 
+                # --- Opponent Available Switches --- #
+                "opp_switch_1": opp_switches[0].species if opp_switches[0] else None,
+                "opp_switch_1_hp": opp_switches[0].current_hp_fraction if opp_switches[0] else 0,
+                "opp_switch_1_status": opp_switches[0].status if opp_switches[0] else None,
+                "opp_switch_2": opp_switches[1].species if opp_switches[1] else None,
+                "opp_switch_2_hp": opp_switches[1].current_hp_fraction if opp_switches[1] else 0,
+                "opp_switch_2_status": opp_switches[1].status if opp_switches[1] else None,
+                "opp_switch_3": opp_switches[2].species if opp_switches[2] else None,
+                "opp_switch_3_hp": opp_switches[2].current_hp_fraction if opp_switches[2] else 0,
+                "opp_switch_3_status": opp_switches[2].status if opp_switches[2] else None,
+                "opp_switch_4": opp_switches[3].species if opp_switches[3] else None,
+                "opp_switch_4_hp": opp_switches[3].current_hp_fraction if opp_switches[3] else 0,
+                "opp_switch_4_status": opp_switches[3].status if opp_switches[3] else None,
+                "opp_switch_5": opp_switches[4].species if opp_switches[4] else None,
+                "opp_switch_5_hp": opp_switches[4].current_hp_fraction if opp_switches[4] else 0,
+                "opp_switch_5_status": opp_switches[4].status if opp_switches[4] else None,
             }
 
         try:
             await asyncio.sleep(float("inf"))
         except asyncio.CancelledError:
             raise
-
         return self.choose_default_move()
 
     def _battle_finished_callback(self, battle):
