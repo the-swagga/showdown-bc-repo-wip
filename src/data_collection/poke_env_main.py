@@ -11,7 +11,7 @@ FORMAT = os.getenv("FORMAT")
 TEST_OPP = os.getenv("TEST_OPP")
 TEAM_NAME = os.getenv("TEAM_NAME")
 
-with open("testing_team.txt", "r") as f:
+with open("team.txt", "r") as f:
     TEAM = f.read()
 
 def init_observer_and_connect():
@@ -35,13 +35,13 @@ async def main():
     while True:
         input(f"Press Enter to queue for {FORMAT}...")
         print()
-        print(f"Queueing for {FORMAT}")
+        print(f"Queueing for {FORMAT}...")
         print()
         await queue_for_battle(bot)
-        print()
-        print("Battle finished.")
-        print()
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except (UnicodeDecodeError, KeyboardInterrupt):
+        print()
