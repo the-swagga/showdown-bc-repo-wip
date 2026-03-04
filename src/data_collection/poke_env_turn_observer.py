@@ -3,7 +3,8 @@ import csv
 import os
 
 from poke_env.player import Player
-from poke_env.battle import Field, SideCondition, Weather, Effect, AbstractBattle
+from poke_env.battle import Field, SideCondition, Weather, Effect
+
 
 # BUG: Weather and Terrain is not seen by poke env until the turn after it is set
 
@@ -158,17 +159,26 @@ class TurnObserver(Player):
 
     async def choose_move(self, battle):
         # Overrides Poke-env choose_move method
-
+        
         if not battle.force_switch:
             weather_tl = weather_turns_left(battle)
             terrain_tl = terrain_turns_left(battle)
+
             if self.prev_state:
-                action, weather_setter, terrain_setter = get_action(battle, battle.observations.get(battle.turn - 1))
+                action = get_chosen_action(battle, battle.turn - 1)
                 if action:
-                    if weather_setter:
-                        weather_tl = 8
-                    if terrain_setter:
-                        terrain_tl = 5
+                    observation = battle.observations.get(battle.turn - 1)
+                    weather_set, terrain_set = get_setter_switched_in(battle, observation)
+                    if weather_set:
+                        weather_already_set = self.prev_state.get("weather") == get_weather(battle)
+                        if not weather_already_set:
+                            weather_tl = get_weather_duration(battle, species=weather_set)
+                            for weather in battle.weather:
+                                weather_seen[weather] = battle.turn
+                    if terrain_set:
+                        terrain_already_set = self.prev_state.get("terrain") == str(get_terrain(battle))
+                        if not terrain_already_set:
+                            terrain_tl = 5
                     self.battle_data.append({**self.prev_state, "action": action})
 
             my = battle.active_pokemon
@@ -179,6 +189,12 @@ class TurnObserver(Player):
             my_move_4 = get_move_at_index(my, 4)
 
             opp = battle.opponent_active_pokemon
+            if opp.item is None or opp.item == "":
+                opp_item = "none"
+            elif opp.item == "unknown_item":
+                opp_item = "unknown"
+            else:
+                opp_item = opp.item
             opp_effect_1, opp_effect_2 = get_effects(opp)
             opp_move_1 = get_move_at_index(opp, 1)
             opp_move_2 = get_move_at_index(opp, 2)
@@ -218,9 +234,9 @@ class TurnObserver(Player):
                 # --- My Active Pokemon State Data --- #
                 "my_pokemon": my.species,
                 "my_ability": my.ability,
-                "my_item": my.item,
-                "my_type_1": my.type_1.name,
-                "my_type_2": my.type_2.name,
+                "my_item": my.item if my.item else "none",
+                "my_type_1": my.type_1.name if my.type_1 else "none",
+                "my_type_2": my.type_2.name if my.type_2 else "none",
                 "my_is_tera": my.is_terastallized,
                 "my_can_tera": battle.can_tera,
                 "my_atk_boost": get_atk_boost(my),
@@ -228,53 +244,53 @@ class TurnObserver(Player):
                 "my_spa_boost": get_spa_boost(my),
                 "my_spd_boost": get_spd_boost(my),
                 "my_spe_boost": get_spe_boost(my),
-                "my_hp": my.current_hp_fraction,
-                "my_status": my.status,
+                "my_hp": round(my.current_hp_fraction, 1),
+                "my_status": my.status.name if my.status else "none",
                 "my_turns_asleep_or_toxic": my.status_counter,
                 "my_turns_protect": my.protect_counter,
-                "my_effect_1": my_effect_1,
-                "my_effect_2": my_effect_2,
+                "my_effect_1": my_effect_1.name if my_effect_1 else "none",
+                "my_effect_2": my_effect_2.name if my_effect_2 else "none",
 
                 # --- My Active Pokemon Move Data --- #
-                "my_move_1": my_move_1.id if my_move_1 else None,
-                "my_move_1_category": my_move_1.category.name if my_move_1 else None,
-                "my_move_1_type": my_move_1.type.name if my_move_1 else None,
-                "my_move_1_power": get_max_power(my_move_1),
-                "my_move_1_accuracy": my_move_1.accuracy if my_move_1 else None,
-                "my_move_1_self_boost": check_self_boost(my_move_1),
-                "my_move_1_pivot": my_move_1.self_switch if my_move_1 else None,
-                "my_move_1_priority": my_move_1.priority if my_move_1 else None,
-                "my_move_2": my_move_2.id,
-                "my_move_2_category": my_move_2.category.name if my_move_2 else None,
-                "my_move_2_type": my_move_2.type.name if my_move_2 else None,
-                "my_move_2_power": get_max_power(my_move_2),
-                "my_move_2_accuracy": my_move_2.accuracy if my_move_2 else None,
-                "my_move_2_self_boost": check_self_boost(my_move_2),
-                "my_move_2_pivot": my_move_2.self_switch if my_move_2 else None,
-                "my_move_2_priority": my_move_2.priority if my_move_2 else None,
-                "my_move_3": my_move_3.id,
-                "my_move_3_category": my_move_3.category.name if my_move_3 else None,
-                "my_move_3_type": my_move_3.type.name if my_move_3 else None,
-                "my_move_3_power": get_max_power(my_move_3),
-                "my_move_3_accuracy": my_move_3.accuracy if my_move_3 else None,
-                "my_move_3_self_boost": check_self_boost(my_move_3),
-                "my_move_3_pivot": my_move_3.self_switch if my_move_3 else None,
-                "my_move_3_priority": my_move_3.priority if my_move_3 else None,
-                "my_move_4": my_move_4.id,
-                "my_move_4_category": my_move_4.category.name if my_move_4 else None,
-                "my_move_4_type": my_move_4.type.name if my_move_4 else None,
-                "my_move_4_power": get_max_power(my_move_4),
-                "my_move_4_accuracy": my_move_4.accuracy if my_move_4 else None,
-                "my_move_4_self_boost": check_self_boost(my_move_4),
-                "my_move_4_pivot": my_move_4.self_switch if my_move_4 else None,
-                "my_move_4_priority": my_move_4.priority if my_move_4 else None,
+                "my_move_1": my_move_1.id if my_move_1 else "none",
+                "my_move_1_category": my_move_1.category.name if my_move_1 else "none",
+                "my_move_1_type": my_move_1.type.name if my_move_1 else "none",
+                "my_move_1_power": get_max_power(my_move_1) if my_move_1 else "none",
+                "my_move_1_accuracy": my_move_1.accuracy if my_move_1 else "none",
+                "my_move_1_self_boost": check_self_boost(my_move_1) if my_move_1 else "none",
+                "my_move_1_pivot": my_move_1.self_switch if my_move_1 else "none",
+                "my_move_1_priority": my_move_1.priority if my_move_1 else "none",
+                "my_move_2": my_move_2.id if my_move_2 else "none",
+                "my_move_2_category": my_move_2.category.name if my_move_2 else "none",
+                "my_move_2_type": my_move_2.type.name if my_move_2 else "none",
+                "my_move_2_power": get_max_power(my_move_2) if my_move_2 else "none",
+                "my_move_2_accuracy": my_move_2.accuracy if my_move_2 else "none",
+                "my_move_2_self_boost": check_self_boost(my_move_2) if my_move_2 else "none",
+                "my_move_2_pivot": my_move_2.self_switch if my_move_2 else "none",
+                "my_move_2_priority": my_move_2.priority if my_move_2 else "none",
+                "my_move_3": my_move_3.id if my_move_3 else "none",
+                "my_move_3_category": my_move_3.category.name if my_move_3 else "none",
+                "my_move_3_type": my_move_3.type.name if my_move_3 else "none",
+                "my_move_3_power": get_max_power(my_move_3) if my_move_3 else "none",
+                "my_move_3_accuracy": my_move_3.accuracy if my_move_3 else "none",
+                "my_move_3_self_boost": check_self_boost(my_move_3) if my_move_3 else "none",
+                "my_move_3_pivot": my_move_3.self_switch if my_move_3 else "none",
+                "my_move_3_priority": my_move_3.priority if my_move_3 else "none",
+                "my_move_4": my_move_4.id if my_move_4 else "none",
+                "my_move_4_category": my_move_4.category.name if my_move_4 else "none",
+                "my_move_4_type": my_move_4.type.name if my_move_4 else "none",
+                "my_move_4_power": get_max_power(my_move_4) if my_move_4 else "none",
+                "my_move_4_accuracy": my_move_4.accuracy if my_move_4 else "none",
+                "my_move_4_self_boost": check_self_boost(my_move_4) if my_move_4 else "none",
+                "my_move_4_pivot": my_move_4.self_switch if my_move_4 else "none",
+                "my_move_4_priority": my_move_4.priority if my_move_4 else "none",
 
                 # --- Opponent Active Pokemon State Data --- #
                 "opp_pokemon": opp.species,
-                "opp_ability": opp.ability,
-                "opp_item": opp.item,
-                "opp_type_1": opp.type_1.name,
-                "opp_type_2": opp.type_2.name,
+                "opp_ability": opp.ability if opp.ability else "unknown",
+                "opp_item": opp_item,
+                "opp_type_1": opp.type_1.name if opp.type_1 else "none",
+                "opp_type_2": opp.type_2.name if opp.type_2 else "none",
                 "opp_is_tera": opp.is_terastallized,
                 "opp_can_tera": not battle.opponent_used_tera,
                 "opp_atk_boost": get_atk_boost(opp),
@@ -283,49 +299,49 @@ class TurnObserver(Player):
                 "opp_spd_boost": get_spd_boost(opp),
                 "opp_spe_boost": get_spe_boost(opp),
                 "opp_hp": opp.current_hp_fraction,
-                "opp_status": opp.status,
+                "opp_status": opp.status.name if opp.status else "none",
                 "opp_turns_asleep_or_toxic": opp.status_counter,
                 "opp_turns_protect": opp.protect_counter,
-                "opp_effect_1": opp_effect_1,
-                "opp_effect_2": opp_effect_2,
-                "opp_move_1": opp_move_1.id if opp_move_1 else None,
-                "opp_move_2": opp_move_2.id if opp_move_2 else None,
-                "opp_move_3": opp_move_3.id if opp_move_3 else None,
-                "opp_move_4": opp_move_4.id if opp_move_4 else None,
+                "opp_effect_1": opp_effect_1 if opp_effect_1 else "none",
+                "opp_effect_2": opp_effect_2 if opp_effect_2 else "none",
+                "opp_move_1": opp_move_1.id if opp_move_1 else "unknown",
+                "opp_move_2": opp_move_2.id if opp_move_2 else "unknown",
+                "opp_move_3": opp_move_3.id if opp_move_3 else "unknown",
+                "opp_move_4": opp_move_4.id if opp_move_4 else "unknown",
 
                 # --- My Available Switches --- #
                 "my_switch_1": my_switches[0].species if my_switches[0] else None,
                 "my_switch_1_hp": my_switches[0].current_hp_fraction if my_switches[0] else 0,
-                "my_switch_1_status": my_switches[0].status if my_switches[0] else None,
+                "my_switch_1_status": my_switches[0].status if my_switches[0] else "none",
                 "my_switch_2": my_switches[1].species if my_switches[1] else None,
                 "my_switch_2_hp": my_switches[1].current_hp_fraction if my_switches[1] else 0,
-                "my_switch_2_status": my_switches[1].status if my_switches[1] else None,
+                "my_switch_2_status": my_switches[1].status if my_switches[1] else "none",
                 "my_switch_3": my_switches[2].species if my_switches[2] else None,
                 "my_switch_3_hp": my_switches[2].current_hp_fraction if my_switches[2] else 0,
-                "my_switch_3_status": my_switches[2].status if my_switches[2] else None,
+                "my_switch_3_status": my_switches[2].status if my_switches[2] else "none",
                 "my_switch_4": my_switches[3].species if my_switches[3] else None,
                 "my_switch_4_hp": my_switches[3].current_hp_fraction if my_switches[3] else 0,
-                "my_switch_4_status": my_switches[3].status if my_switches[3] else None,
+                "my_switch_4_status": my_switches[3].status if my_switches[3] else "none",
                 "my_switch_5": my_switches[4].species if my_switches[4] else None,
                 "my_switch_5_hp": my_switches[4].current_hp_fraction if my_switches[4] else 0,
-                "my_switch_5_status": my_switches[4].status if my_switches[4] else None,
+                "my_switch_5_status": my_switches[4].status if my_switches[4] else "none",
 
                 # --- Opponent Available Switches --- #
                 "opp_switch_1": opp_switches[0].species if opp_switches[0] else None,
                 "opp_switch_1_hp": opp_switches[0].current_hp_fraction if opp_switches[0] else 0,
-                "opp_switch_1_status": opp_switches[0].status if opp_switches[0] else None,
+                "opp_switch_1_status": opp_switches[0].status if opp_switches[0] else "none",
                 "opp_switch_2": opp_switches[1].species if opp_switches[1] else None,
                 "opp_switch_2_hp": opp_switches[1].current_hp_fraction if opp_switches[1] else 0,
-                "opp_switch_2_status": opp_switches[1].status if opp_switches[1] else None,
+                "opp_switch_2_status": opp_switches[1].status if opp_switches[1] else "none",
                 "opp_switch_3": opp_switches[2].species if opp_switches[2] else None,
                 "opp_switch_3_hp": opp_switches[2].current_hp_fraction if opp_switches[2] else 0,
-                "opp_switch_3_status": opp_switches[2].status if opp_switches[2] else None,
+                "opp_switch_3_status": opp_switches[2].status if opp_switches[2] else "none",
                 "opp_switch_4": opp_switches[3].species if opp_switches[3] else None,
                 "opp_switch_4_hp": opp_switches[3].current_hp_fraction if opp_switches[3] else 0,
-                "opp_switch_4_status": opp_switches[3].status if opp_switches[3] else None,
+                "opp_switch_4_status": opp_switches[3].status if opp_switches[3] else "none",
                 "opp_switch_5": opp_switches[4].species if opp_switches[4] else None,
                 "opp_switch_5_hp": opp_switches[4].current_hp_fraction if opp_switches[4] else 0,
-                "opp_switch_5_status": opp_switches[4].status if opp_switches[4] else None,
+                "opp_switch_5_status": opp_switches[4].status if opp_switches[4] else "none",
             }
 
         try:
@@ -336,12 +352,20 @@ class TurnObserver(Player):
 
     def _battle_finished_callback(self, battle):
         if self.prev_state:
-            final_action, weather_setter, terrain_setter = get_action(battle, battle.observations.get(battle.turn))
+            final_action = get_chosen_action(battle, battle.turn)
             if final_action:
-                if weather_setter:
-                    self.prev_state["weather_turns_left"] = 8
-                if terrain_setter:
-                    self.prev_state["terrain_turns_left"] = 5
+                observation = battle.observations.get(battle.turn)
+                weather_set, terrain_set = get_setter_switched_in(battle, observation)
+                if weather_set:
+                    weather_already_set = self.prev_state.get("weather") == get_weather(battle)
+                    if not weather_already_set:
+                        self.prev_state["weather_turns_left"] = get_weather_duration(battle, species=weather_set)
+                        for weather in battle.weather:
+                            weather_seen[weather] = battle.turn - 1
+                if terrain_set:
+                    terrain_already_set = self.prev_state.get("terrain") == str(get_terrain(battle))
+                    if not terrain_already_set:
+                        self.prev_state["terrain_turns_left"] = 5
                 self.battle_data.append({**self.prev_state, "action": final_action})
 
         if self.battle_data:
@@ -355,30 +379,33 @@ class TurnObserver(Player):
         super()._battle_finished_callback(battle)
 
 
-def get_action(battle, observation):
-    if observation is None:
-        return None, False, False
-
-    for event in observation.events:
-        if len(event) < 4 or battle.player_role not in event[2]:
-            continue
-
-        if event[1] in ("move", "switch"):
-            species = event[3].split(",")[0].lower().replace(" ", "").replace("-", "")
-            return event[3], is_weather_setter(species), is_terrain_setter(species)
-
-    return None, False, False
-
-
 # --- Special Case Processing (Poke-env does not see weather/terrain being active on the turn it is set on switch in) --- #
 
-WEATHER_SETTERS = {"kyogre", "pelipper", "politoed", "koraidon", "groudon", "torkoal", "ninetales", "vulpix", "tyranitar", "hippowdown", "gigalith"}
+WEATHER_SETTERS = {"kyogre", "pelipper", "politoed", "koraidon", "groudon", "torkoal", "ninetales", "vulpix", "tyranitar", "hippowdown", "gigalith", "abomasnow", "ninetalesalola"}
 def is_weather_setter(species):
     return species in WEATHER_SETTERS
 
 TERRAIN_SETTERS = {"miraidon", "tapukoko", "pincurchin", "tapubulu", "rillaboom", "thwackey", "tapufini", "weezinggalar", "tapulele", "indeedee", "indeedee-f", "indeedee-m"}
 def is_terrain_setter(species):
     return species in TERRAIN_SETTERS
+
+def get_setter_switched_in(battle, observation):
+    if observation is None:
+        return None, None
+
+    weather_setter = None
+    terrain_setter = None
+
+    for event in observation.events:
+        if len(event) < 4 or event[1] != "switch":
+            continue
+        species = event[3].split(",")[0].lower().replace(" ", "").replace("-", "")
+        if is_weather_setter(species):
+            weather_setter = species
+        if is_terrain_setter(species):
+            terrain_setter = species
+
+    return weather_setter, terrain_setter
 
 # --- Weather Processing --- #
 
@@ -389,7 +416,12 @@ def get_weather(battle):
     for weather in battle.weather:
         return weather.name
 
-def get_weather_duration(battle):
+def get_weather_duration(battle, species=None):
+    if species is not None:
+        if species in {"kyogre", "pelipper", "politoed", "koraidon", "groudon", "torkoal", "ninetales", "vulpix"}:
+            return 8
+        return 5
+
     for weather in battle.weather:
         if weather == Weather.RAINDANCE or weather == Weather.SUNNYDAY:
             return 8
@@ -414,6 +446,7 @@ def weather_turns_left(battle):
         turns_left = weather_duration - (battle.turn - start_turn)
         if turns_left < 0:
             turns_left = 0
+            del weather_seen[weather]
 
         return turns_left
 
@@ -644,5 +677,53 @@ def opp_available_switches(battle, opp_team, index):
 
     if len(switches) >= index:
         return switches[index - 1]
+
+    return None
+
+
+# --- Actions Processing --- #
+
+def get_available_actions(battle):
+    actions = []
+
+    for move in battle.available_moves:
+        actions.append(move.id)
+        if battle.can_tera:
+            actions.append(f"tera_{move.id}")
+
+    for pokemon in battle.available_switches:
+        actions.append(f"switch_{pokemon.species}")
+
+    return actions
+
+def get_chosen_action(battle, turn):
+    observation = battle.observations.get(turn)
+    if observation is None:
+        return None
+
+    chosen_move = None
+    used_tera = False
+
+    for event in observation.events:
+        if len(event) < 3:
+            continue
+
+        if event[1] == "-terastallize" and event[2].startswith(battle.player_role):
+            used_tera = True
+
+        if len(event) < 4:
+            continue
+
+        if event[2].startswith(battle.player_role):
+            if event[1] == "move":
+                chosen_move = event[3].lower().replace(" ", "").replace("-", "")
+            elif event[1] == "switch":
+                species = event[3].split(",")[0].lower().replace(" ", "").replace("-", "")
+                return f"switch_{species}"
+
+    if chosen_move:
+        if used_tera:
+            return f"tera_{chosen_move}"
+        return chosen_move
 
     return None
