@@ -8,6 +8,8 @@ from poke_env.battle import Field, SideCondition, Weather, Effect
 # BUG: Same as above, screens and aurora veil are not seen until the turn after they are set - Not as important
 
 FIELDNAMES = [
+    "turn",
+
     "weather",
     "weather_turns_left",
     "terrain",
@@ -207,6 +209,8 @@ class TurnObserver(Player):
                 opp_switches.append(opp_available_switches(battle, self.opponent_teampreview, i))
 
             self.prev_state = {
+                "turn": battle.turn,
+
                 # --- Battle State Data --- #
                 "weather": get_weather(battle),
                 "weather_turns_left": weather_tl,
