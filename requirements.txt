@@ -4,3 +4,4 @@ pandas
 torch
 poke-env
 datasets
+matplotlib
