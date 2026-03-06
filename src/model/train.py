@@ -5,7 +5,7 @@ from torch.utils.data import DataLoader, random_split
 from bc_model import BCDataset, BCModel
 
 # --- Training Variables --- #
-DATA_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "data", "data_processed.csv")
+DATA_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "data", "training_data.csv")
 BATCH_SIZE = 64
 EPOCH_NUM = 48
 LEARN_RATE = 0.001
