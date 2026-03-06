@@ -6,7 +6,7 @@ import torch.nn as nn
 class BCDataset(Dataset):
     def __init__(self, path):
         data = pd.read_csv(path)
-        self.X = torch.tensor(data.drop(columns=["action"]).values, dtype=torch.float32)
+        self.X = torch.tensor(data.drop(columns=["action", "available_actions"]).values, dtype=torch.float32)
         self.y = torch.tensor(data["action"].values, dtype=torch.long)
 
     def __len__(self):

@@ -1,10 +1,34 @@
 import pandas as pd
 import os
+
+from pandas.io.sas.sas_constants import column_format_text_subheader_index_offset
 from sklearn.preprocessing import LabelEncoder, MinMaxScaler
 import joblib
 
-
 data = pd.read_csv(os.path.join(os.path.dirname(__file__), "..", "..", "data", "data.csv"))
+
+# --- Process Available Actions --- #
+available_actions = []
+for _, row in data.iterrows():
+    actions = []
+
+    for i in range(1, 5):
+        move = row[f"my_move_{i}"]
+        if move != "none":
+            actions.append(move)
+            if row["my_can_tera"]:
+                actions.append(f"tera_{move}")
+
+    for i in range(1, 6):
+        switch = row[f"my_switch_{i}"]
+        if switch != "none":
+            actions.append(f"switch_{switch}")
+
+    available_actions.append(",".join(actions))
+
+data["available_actions"] = available_actions
+
+# --- Drop columns --- #
 
 drop_columns = [
     "turn",
@@ -30,7 +54,6 @@ drop_columns = [
 
 data.drop(columns=drop_columns, inplace=True)
 
-# Round opponent HP to be consistent with my HP
 data["opp_hp"] = data["opp_hp"].round(1)
 
 # --- Encode categorical data --- #
@@ -38,7 +61,7 @@ encoders = {}
 os.makedirs(os.path.join(os.path.dirname(__file__), "encoders"), exist_ok=True)
 
 for column in data.columns:
-    if isinstance(data[column].iloc[0], str):
+    if isinstance(data[column].iloc[0], str) and column != "available_actions":
         label_encoder = LabelEncoder()
         data[column] = label_encoder.fit_transform(data[column].astype(str))
         encoders[column] = label_encoder
@@ -52,7 +75,7 @@ for column in data.columns:
 normalise_columns = []
 for column in data.columns:
     if data[column].dtype == "float64" or data[column].dtype == "int64":
-        if column != "action":
+        if column != "action" and column != "available_actions":
             normalise_columns.append(column)
 
 scaler = MinMaxScaler()
@@ -60,5 +83,5 @@ data[normalise_columns] = scaler.fit_transform(data[normalise_columns])
 joblib.dump(scaler, os.path.join(os.path.dirname(__file__), "encoders", "scaler.pkl"))
 
 # Save data
-data.to_csv(os.path.join(os.path.dirname(__file__), "..", "..", "data", "data_encoded.csv"), index=False)
+data.to_csv(os.path.join(os.path.dirname(__file__), "..", "..", "data", "data_processed.csv"), index=False)
 print(f"Shape after encoding: {data.shape}")
