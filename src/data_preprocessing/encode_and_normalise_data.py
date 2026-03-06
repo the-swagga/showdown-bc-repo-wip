@@ -1,8 +1,7 @@
 import pandas as pd
 import os
-
-from pandas.io.sas.sas_constants import column_format_text_subheader_index_offset
 from sklearn.preprocessing import LabelEncoder, MinMaxScaler
+from sklearn.model_selection import train_test_split
 import joblib
 
 data = pd.read_csv(os.path.join(os.path.dirname(__file__), "..", "..", "data", "data.csv"))
@@ -85,3 +84,8 @@ joblib.dump(scaler, os.path.join(os.path.dirname(__file__), "encoders", "scaler.
 # Save data
 data.to_csv(os.path.join(os.path.dirname(__file__), "..", "..", "data", "data_processed.csv"), index=False)
 print(f"Shape after encoding: {data.shape}")
+
+# --- Train/Test split --- #
+training_data, testing_data = train_test_split(data, test_size=0.1, random_state=38)
+training_data.to_csv(os.path.join(os.path.dirname(__file__), "..", "..", "data", "training_data.csv"), index=False)
+testing_data.to_csv(os.path.join(os.path.dirname(__file__), "..", "..", "data", "testing_data.csv"), index=False)
