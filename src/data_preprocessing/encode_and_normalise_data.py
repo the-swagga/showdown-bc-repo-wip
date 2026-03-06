@@ -3,6 +3,7 @@ import os
 from sklearn.preprocessing import LabelEncoder, MinMaxScaler
 import joblib
 
+
 data = pd.read_csv(os.path.join(os.path.dirname(__file__), "..", "..", "data", "data.csv"))
 
 drop_columns = [
