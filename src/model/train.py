@@ -6,8 +6,6 @@ import torch.nn as nn
 from torch.utils.data import DataLoader, random_split
 from bc_model import BCDataset, BCModel
 
-torch.manual_seed(38)
-
 # --- Training Variables --- #
 DATA_PATH = os.path.join(os.path.dirname(__file__), "..", "..", "data", "training_data.csv")
 BATCH_SIZE = 64
@@ -16,13 +14,15 @@ LEARN_RATE = 0.001
 VALIDATION_SPLIT = 0.1
 PATIENCE = 10
 
-def train_model(show_loss=True):
+def train_model(seed=38, show_loss=True):
+    torch.manual_seed(seed)
+
     # --- Dataset --- #
     dataset = BCDataset(DATA_PATH)
 
     validation_size = int(len(dataset) * VALIDATION_SPLIT)
     training_size = len(dataset) - validation_size
-    training_set, validation_set = random_split(dataset, [training_size, validation_size], generator=torch.Generator().manual_seed(38))
+    training_set, validation_set = random_split(dataset, [training_size, validation_size], generator=torch.Generator().manual_seed(seed))
 
     training_loader = DataLoader(training_set, batch_size=BATCH_SIZE, shuffle=True)
     validation_loader = DataLoader(validation_set, batch_size=BATCH_SIZE)

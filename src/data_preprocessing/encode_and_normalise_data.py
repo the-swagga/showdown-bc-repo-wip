@@ -4,7 +4,7 @@ from sklearn.preprocessing import LabelEncoder, MinMaxScaler
 from sklearn.model_selection import train_test_split
 import joblib
 
-def preprocess_data(records=0):
+def preprocess_data(seed=38, records=0):
     data = pd.read_csv(os.path.join(os.path.dirname(__file__), "..", "..", "data", "data.csv"))
     if records <= 0:
         records = int(input("Enter number of records to use (-1 for all): "))
@@ -92,6 +92,6 @@ def preprocess_data(records=0):
     print(f"Shape after encoding: {data.shape}")
 
     # --- Train/Test split --- #
-    training_data, testing_data = train_test_split(data, test_size=0.1, random_state=38)
+    training_data, testing_data = train_test_split(data, test_size=0.1, random_state=seed)
     training_data.to_csv(os.path.join(os.path.dirname(__file__), "..", "..", "data", "training_data.csv"), index=False)
     testing_data.to_csv(os.path.join(os.path.dirname(__file__), "..", "..", "data", "testing_data.csv"), index=False)
