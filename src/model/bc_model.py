@@ -22,9 +22,9 @@ class BCModel(nn.Module):
         self.dropout = nn.Dropout(0.2)
         self.relu = nn.ReLU()
 
-        self.fc1 = nn.Linear(input_size, 64)
-        self.fc2 = nn.Linear(64, 32)
-        self.fc3 = nn.Linear(32, output_size)
+        self.fc1 = nn.Linear(input_size, 128)
+        self.fc2 = nn.Linear(128, 64)
+        self.fc3 = nn.Linear(64, output_size)
 
     def forward(self, x):
         x = self.dropout(self.relu(self.fc1(x)))
