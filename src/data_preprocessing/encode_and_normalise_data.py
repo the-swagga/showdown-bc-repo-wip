@@ -5,6 +5,9 @@ from sklearn.model_selection import train_test_split
 import joblib
 
 data = pd.read_csv(os.path.join(os.path.dirname(__file__), "..", "..", "data", "data.csv"))
+rows = int(input("Enter number of records to use (-1 for all): "))
+if rows != -1:
+    data = data.head(rows)
 
 # --- Process Available Actions --- #
 available_actions = []
